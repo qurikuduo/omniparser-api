@@ -6,8 +6,10 @@ import base64
 import io
 from PIL import Image
 import torch
+from torch.serialization import add_safe_globals
 import numpy as np
 import os
+import uuid
 
 # Existing imports
 import numpy as np
@@ -25,8 +27,14 @@ import torch
 
 # yolo_model = get_yolo_model(model_path='/data/icon_detect/best.pt')
 # caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="/data/icon_caption_florence")
-
+import ultralytics
 from ultralytics import YOLO
+#from ultralytics.nn.tasks import DetectionModel
+#torch.serialization.add_safe_globals([DetectionModel])
+
+# 正确写法：用原生 torch.load 包装一次，避免递归
+_orig_torch_load = torch.load
+torch.load = lambda *args, **kwargs: _orig_torch_load(*args, **{**kwargs, "weights_only": False})
 
 # if not os.path.exists("/data/icon_detect"):
 #     os.makedirs("/data/icon_detect")
@@ -47,12 +55,14 @@ try:
         "weights/icon_caption_florence",
         torch_dtype=torch.float16,
         trust_remote_code=True,
+        attn_implementation="eager",  # ← 新增这一行，解决 _supports_sdpa 错误
     ).to("cuda")
 except:
     model = AutoModelForCausalLM.from_pretrained(
         "weights/icon_caption_florence",
         torch_dtype=torch.float16,
         trust_remote_code=True,
+        attn_implementation="eager",  # ← 这里也加
     )
 caption_model_processor = {"processor": processor, "model": model}
 print("finish loading model!!!")
@@ -65,11 +75,14 @@ class ProcessResponse(BaseModel):
     parsed_content_list: str
     label_coordinates: str
 
+def generate_uuid():
+    return str(uuid.uuid4())
 
 def process(
     image_input: Image.Image, box_threshold: float, iou_threshold: float
 ) -> ProcessResponse:
-    image_save_path = "imgs/saved_image_demo.png"
+    #image_save_path = "imgs/saved_image_demo.png"
+    image_save_path = f"imgs/{generate_uuid()}.png"
     image_input.save(image_save_path)
     image = Image.open(image_save_path)
     box_overlay_ratio = image.size[0] / 3200
