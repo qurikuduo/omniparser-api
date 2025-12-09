@@ -1,6 +1,8 @@
 FROM registry.hf.space/microsoft-omniparser:latest
 
 USER root
+RUN pip install  numpy==1.26.4 --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir paddleocr==2.7.3 paddlepaddle==2.6.2 paddlepaddle-gpu==2.6.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 RUN chmod 1777 /tmp \
     && apt update -q && apt install -y ca-certificates wget libgl1 \
@@ -9,7 +11,7 @@ RUN chmod 1777 /tmp \
     && apt install -y --no-install-recommends libcudnn8 libcublas-12-2
 
 RUN pip install fastapi[all] 
-
+RUN pip install  "numpy==1.26.4" --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY main.py main.py
 RUN python main.py
