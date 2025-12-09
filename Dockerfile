@@ -1,4 +1,5 @@
-FROM registry.hf.space/microsoft-omniparser:latest
+#FROM registry.hf.space/microsoft-omniparser:latest
+FROM registry.hf.space/microsoft-omniparser@sha256:604fc53b4a66545c0723d6c0f8711e7321cd9eb9600a06156fe3eee9d8a54e92
 
 USER root
 RUN pip install  numpy==1.26.4 --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
