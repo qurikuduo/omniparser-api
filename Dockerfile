@@ -1,5 +1,4 @@
-#FROM registry.hf.space/microsoft-omniparser:latest
-FROM registry.hf.space/microsoft-omniparser@sha256:604fc53b4a66545c0723d6c0f8711e7321cd9eb9600a06156fe3eee9d8a54e92
+FROM registry.hf.space/microsoft-omniparser:latest
 
 USER root
 RUN pip install  numpy==1.26.4 --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
@@ -11,9 +10,18 @@ RUN chmod 1777 /tmp \
     && dpkg -i /tmp/cuda-keyring.deb && apt update -q \
     && apt install -y --no-install-recommends libcudnn8 libcublas-12-2
 
-RUN pip install fastapi[all] 
-RUN pip install  "numpy==1.26.4" --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install fastapi[all] --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 关键修复：降级 Transformers 到 4.49.0（解决 _supports_sdpa 错误）
+RUN pip install transformers==4.49.0 --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+RUN pip install  "numpy==1.26.4"  --no-cache-dir --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY main.py main.py
-RUN python main.py
+# 关键：构建时强制开网，只为下载 Florence-2 的 processor 代码和配置（只此一次）
+RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python main.py
+
+# 构建完成后永久关闭网络（运行时彻底离线）
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    HF_HUB_DISABLE_TELEMETRY=1
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
