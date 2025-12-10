@@ -46,24 +46,32 @@ except:
 
 from transformers import AutoProcessor, AutoModelForCausalLM
 
-processor = AutoProcessor.from_pretrained(
-    "microsoft/Florence-2-base", trust_remote_code=True
-)
+#processor = AutoProcessor.from_pretrained(
+#    "microsoft/Florence-2-base", trust_remote_code=True
+#)
+#processor = AutoProcessor.from_pretrained(
+#    "weights/icon_caption_florence",  # ← 改成你本地模型路径
+#    trust_remote_code=True
+#)
 
-try:
-    model = AutoModelForCausalLM.from_pretrained(
-        "weights/icon_caption_florence",
-        torch_dtype=torch.float16,
-        trust_remote_code=True,
-        attn_implementation="eager",  # ← 新增这一行，解决 _supports_sdpa 错误
-    ).to("cuda")
-except:
-    model = AutoModelForCausalLM.from_pretrained(
-        "weights/icon_caption_florence",
-        torch_dtype=torch.float16,
-        trust_remote_code=True,
-        attn_implementation="eager",  # ← 这里也加
-    )
+# 改成官方路径（构建时已下载代码和 config，运行时离线也能用！）
+processor = AutoProcessor.from_pretrained(
+    "microsoft/Florence-2-base-ft",  # ← 改成这个！
+    trust_remote_code=True
+)
+# 加载模型（统一处理 GPU）
+model = AutoModelForCausalLM.from_pretrained(
+    "microsoft/Florence-2-base-ft",
+    torch_dtype=torch.float16,
+    trust_remote_code=True,
+    # attn_implementation="eager",  # 4.49.0 后可选删除
+)
+if torch.cuda.is_available():
+    model = model.to("cuda")
+    print("Florence-2 模型已成功加载到 GPU！")
+else:
+    print("无可用 GPU，模型加载到 CPU（能跑，只是慢）")
+
 caption_model_processor = {"processor": processor, "model": model}
 print("finish loading model!!!")
 
